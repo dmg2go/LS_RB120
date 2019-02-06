@@ -1,4 +1,8 @@
-
+# => RB120 Object Oriented Programming
+# => Lesson 1 OOP book Exercises
+# => Febuary 6-?, 2019
+# => David George 
+# => dmg2go@gmail.com
 # good_dog.rb
 =begin
 class GoodDog
@@ -30,6 +34,9 @@ p sparky.speak
 =end
 
 class GoodDog
+  
+  @@instance_count = 0
+
   attr_accessor :name, :breed, :age, :weight
 
   def initialize(n, b, a, w)
@@ -37,6 +44,11 @@ class GoodDog
     self.breed = b
     self.age = a
     self.weight = w
+    @@instance_count += 1
+  end
+
+  def self.instance_count
+    @@instance_count
   end
 
   def state_update(n, b, a, w)
@@ -55,14 +67,22 @@ class GoodDog
   end
 end
 
-sparky = GoodDog.new("Shizz", "Beagle", 3, 12)
+shizz = GoodDog.new("Shizz", "Beagle", 3, 12)
 
-p GoodDog.ancestors
-p sparky.class
-p sparky.speak
-p sparky.info
-sparky.name = "Jingles"
-p sparky.speak
-sparky.state_update("Alphonse", "mutt", 8, 25)
+bomber = GoodDog.new("Bomber", "hound", 6, 42)
 
-p sparky.info
+p shizz.info
+
+p shizz.speak
+shizz.state_update("Alphonse", "mutt", 8, 25)
+
+p bomber.info
+
+p "There are  #{GoodDog.instance_count} GoodDog instances."
+
+p shizz.info
+
+puts shizz
+p shizz
+puts bomber
+p bomber
