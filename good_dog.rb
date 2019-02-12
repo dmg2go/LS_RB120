@@ -86,3 +86,9 @@ puts shizz
 p shizz
 puts bomber
 p bomber
+
+
+class SomeClass
+  puts self
+  p self
+end
