@@ -1,17 +1,16 @@
 # => RB120 Object Oriented Programming
 # => Lesson 1 OOP book Exercises
 # => Febuary 6-?, 2019
-# => David George 
+# => David George
 # => dmg2go@gmail.com
 # => classy.rb
-
 
 require 'securerandom'
 require 'pry'
 
 module Cookable
-  attr :fave_recipe
-  attr :season
+  attr_reader :fave_recipe
+  attr_reader :season
 
   def add_recipe(recipe)
     @fave_recipe = recipe
@@ -30,9 +29,7 @@ module Cookable
   end
 end
 
-
 class Plant
-
   @@object_count = 0
   def initialize(name)
     self.name = name
@@ -41,7 +38,7 @@ class Plant
     @@object_count += 1
   end
 
-  def get_uuid
+  def uuid
     SecureRandom.uuid
   end
 
@@ -52,13 +49,11 @@ class Plant
   def self.how_many_plant_objects?
     puts "#{@@object_count} plant objects have been instantiated."
   end
-
 end
 
 class Veg < Plant
   EDIBLE = true
   include Cookable
-  
   attr_accessor :name, :cals, :grams
 
   def initialize(name, cals, portion)
@@ -71,14 +66,14 @@ class Veg < Plant
     super + "=> cals: #{cals}. portion: #{grams}"
   end
 
-  def is_edible?
+  def edible?
     EDIBLE
   end
 end
 
 class Tree < Plant
   EDIBLE = false
-  DENSITY_TABLE = {"maple" => 650, "aspen" => 420}
+  DENSITY_TABLE = { "maple" => 650, "aspen" => 420 }
   attr_accessor :name, :height, :specie
   def initialize(name, height, specie)
     super(name)
@@ -90,7 +85,11 @@ class Tree < Plant
     super + "=> height: #{height}"
   end
 
-  def is_edible?
+  def selfie
+    puts object_id
+  end
+
+  def edible?
     EDIBLE
   end
 
@@ -99,33 +98,34 @@ class Tree < Plant
   end
 
   private
+
   def density(volume = 1, moisture_content = 0.06)
-    binding.pry
+    # binding.pry
     density = lookup(specie) * volume * moisture_content
-    puts "The density of #{specie} is #{density} kg/m**3 (assuming moisture content of 6%."
+    puts "#{specie} density is #{density} kg/m**3 (assume moisture of 6%)."
   end
 
   def lookup(specie)
     a_tree = DENSITY_TABLE.fetch(specie, "maple")
-    binding.pry
+    # binding.pry
     a_tree
   end
 end
 
 olive = Veg.new("olive", "330", "100g")
-#p olive.to_s
-p olive.is_edible?
+# p olive.to_s
+p olive.edible?
 Plant.how_many_plant_objects?
 puts olive.show_recipe
 olive.add_recipe("chop and pan fry with anchovies")
 puts olive.show_recipe
 
 maple = Tree.new("maple", "100 ft", "maple")
-#p maple.to_s
-p maple.is_edible?
+# p maple.to_s
+p maple.edible?
 Plant.how_many_plant_objects?
 
-#p Veg.ancestors
+# p Veg.ancestors
 
 maple.how_heavy?
 
@@ -133,3 +133,7 @@ aspen = Tree.new("aspen", "90 ft", "aspen")
 Plant.how_many_plant_objects?
 
 aspen.how_heavy?
+
+puts aspen.object_id
+
+aspen.selfie

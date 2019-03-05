@@ -18,7 +18,7 @@ class Game
     @board = Board.new
     @user = Player.new(:user, 'U', "active")
     @opponent = Player.new(:opponent, 'C', "active")
-    self.play_game if self.play?
+    self.play_game # if self.play?
   end
 
   def show_board
@@ -32,7 +32,7 @@ class Game
       puts prompt
       user_reply = gets.chomp
 
-      user_reply = 'Yes' if user_reply[0].downcase == 'y'
+      user_reply = 'Yes' if user_reply[0].downcase == 'y' && user_reply != nil
 
       if VALID_USER_RESPONSES.include?(user_reply.to_sym)
         valid_reply = true
@@ -42,24 +42,51 @@ class Game
   end
 
   def play_game
-    loop do
-      show_board
+    want_to_play = play?
+    show_board if want_to_play
+
+    while want_to_play == true do
       user.move(@board, GAME_PROMPTS[:new_a_play])
       show_board
-      break if game_over?
+      game_state = game_over?
+
+      if game_state != "active"
+        puts game_state
+        want_to_play = play?
+        if want_to_play == true 
+          @board.restore_board 
+          show_board
+        end
+        binding.pry
+        next
+      end
+
       opponent.move(@board, '')
       show_board
-      break if game_over?
-      binding.pry
-      puts "is this the end?"
+      game_state = game_over?
+
+      if game_state != "active"
+        puts game_state
+        want_to_play = play?
+        if want_to_play == true 
+          @board.restore_board 
+          show_board
+        end
+      end
     end
-
-
   end
 
   def game_over?
-    # check if a win or tie occurs - then set game_state to over with resolution
-    @board.available_squares.empty? ? true : false
+    case @board.judge_score
+    when 'U'
+      then "User won!"
+    when 'C'
+      then "Computer won!"
+    when 'T'
+      then 'Declare tied ...'
+    else
+      @board.available_squares.empty? ? 'declare tied' : "active"
+    end
   end
 end
 
@@ -84,7 +111,7 @@ class Player
 
   end
 
-private
+  private
   def select_user_play(game_board, move_prompt)
     @a_play = nil
     until @a_play do
@@ -133,6 +160,7 @@ class Board
     @available_squares = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
     @squares = {}
     (1..9).each {|key| @squares[key] = Square.new(key.to_s)}
+    @win_sets = [[1, 2 , 3], [4, 5, 6], [7, 8, 9], [1, 5, 9], [3, 5, 7], [1, 4, 7], [2, 5, 8], [3, 6, 9]]
   end
 
   def show
@@ -151,6 +179,11 @@ class Board
     puts ""
   end
 
+  def restore_board
+    @available_squares = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+    (1..9).each {|key| @squares[key] = Square.new(key.to_s)}
+  end
+
   def get_square_at(key)
     @squares[key]
   end
@@ -161,6 +194,17 @@ class Board
     # binding.pry
   end
 
+  def judge_score
+    @win_sets.each do |winning_array|
+      if @squares[winning_array[0]] == @squares[winning_array[1]] && @squares[winning_array[1]] == @squares[winning_array[2]]
+        return @squares[winning_array[0]].to_s
+      
+      elsif @win_sets.all?{|w_a| w_a.any?("U") && w_a.any?("C")}
+        binding.pry
+        "T"
+      end
+    end
+  end
 end
 
 class Square

@@ -59,7 +59,7 @@ class Stump
 
   protected
   def b_protected_method(x)
-        binding.pry
+    #binding.pry
     puts "Yes, in b and I'm protected!"
     x.a_public_method
   end

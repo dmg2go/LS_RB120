@@ -7,7 +7,25 @@
 
 require 'pry'
 
-class MyCar
+class Vehicle
+  attr_accessor :color, :year, :make, :model
+  attr_reader :speed, :is_running
+  
+  def initialize(ma, mo, yr, col)
+    self.model = mo
+    self.make = ma
+    self.year = yr
+    self.color = col
+    @speed = 0
+    @is_running = false
+  end
+
+
+  
+
+end
+
+class MyCar < Vehicle
   attr_accessor :color, :year, :make, :model
   attr_reader :speed, :is_running
   
