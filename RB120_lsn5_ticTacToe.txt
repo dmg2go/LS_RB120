@@ -1,0 +1,38 @@
+# => RB120 Object Oriented Programming
+# => Lesson 5 Slightly Larger OO Programs
+# => March 2, 2019
+# => David George 
+# => dmg2go@gmail.com
+# => RB120_lsn5_ticTacToe.txt
+
+
+Text File description of tic tac toe game.
+
+A text prompt provides an option to user to quit or begin game.
+If "begin game" is chosen, a game is initialized.
+  An initialized game is comprised of empty board of nine fields, organized in a 3 x 3 grid, 
+  and two players who take alternating turns placing marks to claim a field of the grid.
+  One player is always the user, the second player can be either the computer or another user.
+  The goal of a player is to mark three contiguous fields in a straight line, 
+  and to block the opposing player from doing so. 
+  Fields are marked turn by turn until a player wins or all fields are marked without a winner, 
+  thus a tie.
+Once a game is resolved, the user is offered a choice to quit or to play again.
+
+
+Nouns
+  game
+  board
+  field
+  grid
+  player
+  goal(objective)
+Verbs
+  prompt
+  mark
+  turn
+  resolve_game (test for resolved state)
+
+
+
+
