@@ -9,7 +9,7 @@ require 'pry'
 
 class Game
   GAME_PROMPTS = {new_game: "Want to a_play Tic Tac Toe?", new_a_play: "Select a cell to mark ... (by number)"}
-  VALID_USER_RESPONSES = [:Yes, :No]
+  VALID_USER_RESPONSES = [:Yes, :No, :Y, :N, :y, :n]
   PLAYER_TYPES = [:user, :opponent]
 
   attr_reader :board, :user, :opponent
@@ -25,55 +25,60 @@ class Game
      @board.show
   end
 
-  def play?
-    valid_reply = false
-    until valid_reply == true do
-      prompt = GAME_PROMPTS[:new_game]
-      puts prompt
+  def run_game?
+    response_is_valid = false
+    
+    until response_is_valid do
+      puts GAME_PROMPTS[:new_game]
       user_reply = gets.chomp
-
-      user_reply = 'Yes' if user_reply[0].downcase == 'y' && user_reply != nil
-
+     # binding.pry
       if VALID_USER_RESPONSES.include?(user_reply.to_sym)
-        valid_reply = true
+        #response_is_valid = true
+        #user_reply = 'Yes' if user_reply[0].downcase == 'y'
+        return user_reply[0].downcase == 'y' ? true : false
+        #response_is_valid = user_reply[0].downcase == 'y' ? true : false
+        #binding.pry
       end
     end
-    user_reply[0] == 'Y' ? true : false
+    #user_reply[0] == 'Y' ? true : false
   end
 
   def play_game
-    want_to_play = play?
+    want_to_play = run_game?
+    binding.pry
     show_board if want_to_play
+    current_player = @user
+    while want_to_play do
 
-    while want_to_play == true do
-      user.move(@board, GAME_PROMPTS[:new_a_play])
+      if current_player == @user
+        user.move(@board, GAME_PROMPTS[:new_a_play])
+      elsif current_player == @opponent
+        opponent.move(@board, '')
+      end
+
       show_board
-      game_state = game_over?
-
-      if game_state != "active"
-        puts game_state
-        want_to_play = play?
-        if want_to_play == true 
-          @board.restore_board 
-          show_board
-        end
+      if game_over?
+        want_to_play = run_game?
         binding.pry
+        if want_to_play
+          restore_board
+        else
+          puts "Thanks for playing Tic Tac hotDog"
+          break
+        end
         next
       end
-
-      opponent.move(@board, '')
-      show_board
-      game_state = game_over?
-
-      if game_state != "active"
-        puts game_state
-        want_to_play = play?
-        if want_to_play == true 
-          @board.restore_board 
-          show_board
-        end
-      end
+      current_player = toggel_player(current_player)
     end
+  end
+
+  def toggel_player(current_player)
+    current_player == @user ? @opponent : @user
+  end
+
+  def restore_board
+    @board.restore_board 
+    show_board
   end
 
   def game_over?
@@ -85,7 +90,7 @@ class Game
     when 'T'
       then 'Declare tied ...'
     else
-      @board.available_squares.empty? ? 'declare tied' : "active"
+      @board.available_squares.empty? ? 'declare tied' : false
     end
   end
 end
