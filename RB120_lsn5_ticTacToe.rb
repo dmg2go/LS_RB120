@@ -30,15 +30,18 @@ class Game
 
     until response_is_valid do
       puts GAME_PROMPTS[:new_game]
-      user_reply = gets.chomp
+      user_reply = gets.chomp!
       if VALID_USER_RESPONSES.include?(user_reply.to_sym)
         return user_reply[0].downcase == 'y' ? 'active' : exit_game
+      else
+        puts "Please enter y for yes or n for no ..."
       end
     end
   end
 
   def play_again?
     restore_board
+    binding.pry
     play_new_game?
   end
 
@@ -57,9 +60,10 @@ class Game
 
       show_board
       @game_state = score_game
-
-      if @game_state != active
-        puts @game_state
+      #binding.pry
+      if @game_state != 'active'
+        binding.pry
+        puts "this is the game_state that ended the game #{@game_state}"
         play_again? 
       else
         current_player = toggel_player(current_player)
@@ -83,7 +87,7 @@ class Game
     when 'C'
       then @game_state = "Computer won!"
     when 'T'
-      then @game_state = 'Declare tied ...'
+      then @game_state = 'Declare tie ...'
     when 'A'
       then @game_state = 'active'
     end
@@ -123,7 +127,7 @@ class Player
     @a_play = nil
     until @a_play do
       puts move_prompt
-      @a_play = gets.chomp
+      @a_play = gets.chomp!
 
       if valid_play?(@a_play, game_board.available_squares)
         consume_play(@a_play, game_board.available_squares) # returns deleted item @a_play
@@ -167,7 +171,7 @@ class Board
     @available_squares = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
     @squares = {}
     (1..9).each {|key| @squares[key] = Square.new(key.to_s)}
-    @win_sets = [[1, 2 , 3], [4, 5, 6], [7, 8, 9], [1, 5, 9], [3, 5, 7], [1, 4, 7], [2, 5, 8], [3, 6, 9]]
+    @win_sets = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 5, 9], [3, 5, 7], [1, 4, 7], [2, 5, 8], [3, 6, 9]]
   end
 
   def show
@@ -202,16 +206,18 @@ class Board
   end
 
   def judge_score
+    #binding.pry
     @win_sets.each do |winning_array|
-      # A winning set contains all marks of a single player indicates a win (and loss)
-      if @squares[winning_array[0]] == @squares[winning_array[1]] 
-      && @squares[winning_array[1]] == @squares[winning_array[2]]
-        return @squares[winning_array[0]].to_s
+      #binding.pry if @squares[winning_array[0]] == "U"# A winning set contains all marks of a single player indicates a win (and loss)
+      if @squares[winning_array[0]] == @squares[winning_array[1]] && @squares[winning_array[1]] == @squares[winning_array[2]]
+        binding.pry
+        return @squares[winning_array[0]]
 
       # all winning sets contain marks of both players
       elsif @win_sets.all?{|w_a| w_a.any?("U") && w_a.any?("C")} 
         return "T"
       else
+        binding.pry
         return "A" # should never get here, but return A for 'active ' @game_state
       end
     end
