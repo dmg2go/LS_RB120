@@ -1,6 +1,6 @@
 # => RB120 Object Oriented Programming
 # => Lesson 5 Slightly Larger OO Programs
-# => March 2, 2019
+# => March 2-10, 2019
 # => David George 
 # => dmg2go@gmail.com
 # => RB120_lsn5_ticTacToe.rb
@@ -12,44 +12,43 @@ class Game
   VALID_USER_RESPONSES = [:Yes, :No, :Y, :N, :y, :n]
   PLAYER_TYPES = [:user, :opponent]
 
-  attr_reader :board, :user, :opponent
+  attr_reader :board, :user, :opponent, :game_state
 
   def initialize
     @board = Board.new
     @user = Player.new(:user, 'U', "active")
     @opponent = Player.new(:opponent, 'C', "active")
-    self.play_game # if self.play?
+    self.run_game
   end
 
   def show_board
      @board.show
   end
 
-  def run_game?
+  def play_new_game?
     response_is_valid = false
-    
+
     until response_is_valid do
       puts GAME_PROMPTS[:new_game]
       user_reply = gets.chomp
-     # binding.pry
       if VALID_USER_RESPONSES.include?(user_reply.to_sym)
-        #response_is_valid = true
-        #user_reply = 'Yes' if user_reply[0].downcase == 'y'
-        return user_reply[0].downcase == 'y' ? true : false
-        #response_is_valid = user_reply[0].downcase == 'y' ? true : false
-        #binding.pry
+        return user_reply[0].downcase == 'y' ? 'active' : exit_game
       end
     end
-    #user_reply[0] == 'Y' ? true : false
   end
 
-  def play_game
-    want_to_play = run_game?
-    binding.pry
-    show_board if want_to_play
-    current_player = @user
-    while want_to_play do
+  def play_again?
+    restore_board
+    play_new_game?
+  end
 
+  def run_game
+    @game_state = "new"
+    @game_state = play_new_game? # sets to 'active' or false
+    show_board # don't need as play_game? triggers exit_game  unless @game_state == false
+    current_player = @user
+
+    while @game_state == 'active' do
       if current_player == @user
         user.move(@board, GAME_PROMPTS[:new_a_play])
       elsif current_player == @opponent
@@ -57,18 +56,14 @@ class Game
       end
 
       show_board
-      if game_over?
-        want_to_play = run_game?
-        binding.pry
-        if want_to_play
-          restore_board
-        else
-          puts "Thanks for playing Tic Tac hotDog"
-          break
-        end
-        next
+      @game_state = score_game
+
+      if @game_state != active
+        puts @game_state
+        play_again? 
+      else
+        current_player = toggel_player(current_player)
       end
-      current_player = toggel_player(current_player)
     end
   end
 
@@ -81,28 +76,35 @@ class Game
     show_board
   end
 
-  def game_over?
+  def score_game
     case @board.judge_score
     when 'U'
-      then "User won!"
+      then @game_state = "User won!"
     when 'C'
-      then "Computer won!"
+      then @game_state = "Computer won!"
     when 'T'
-      then 'Declare tied ...'
-    else
-      @board.available_squares.empty? ? 'declare tied' : false
+      then @game_state = 'Declare tied ...'
+    when 'A'
+      then @game_state = 'active'
     end
+    @game_state
+  end
+
+  def exit_game
+    @game_state = nil
+    puts "Thanks for playing Tic Tac Toe."
+    exit(true)
   end
 end
 
 class Player
-  VALID_PLAYER_STATUS = ["active", "winner", "loser", "tied"]
-  attr_reader :a_play, :type, :marker, :status
+  # unused 3/8/19 VALID_PLAYER_STATUS = ["winner", "loser", "tied"]
+  attr_reader :a_play, :type, :marker # , :status
 
   def initialize(type, marker, status)
     @type = type
     @marker = marker
-    @status = status 
+    # @status = status  # unused
   end
 
   def move(game_board, move_prompt)
@@ -201,12 +203,16 @@ class Board
 
   def judge_score
     @win_sets.each do |winning_array|
-      if @squares[winning_array[0]] == @squares[winning_array[1]] && @squares[winning_array[1]] == @squares[winning_array[2]]
+      # A winning set contains all marks of a single player indicates a win (and loss)
+      if @squares[winning_array[0]] == @squares[winning_array[1]] 
+      && @squares[winning_array[1]] == @squares[winning_array[2]]
         return @squares[winning_array[0]].to_s
-      
-      elsif @win_sets.all?{|w_a| w_a.any?("U") && w_a.any?("C")}
-        binding.pry
-        "T"
+
+      # all winning sets contain marks of both players
+      elsif @win_sets.all?{|w_a| w_a.any?("U") && w_a.any?("C")} 
+        return "T"
+      else
+        return "A" # should never get here, but return A for 'active ' @game_state
       end
     end
   end
