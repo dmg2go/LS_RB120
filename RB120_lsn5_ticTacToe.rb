@@ -18,7 +18,7 @@ class Game
     @board = Board.new
     @user = Player.new(:user, 'U', "active")
     @opponent = Player.new(:opponent, 'C', "active")
-    self.run_game
+    self.play_new_game?
   end
 
   def show_board
@@ -32,7 +32,7 @@ class Game
       puts GAME_PROMPTS[:new_game]
       user_reply = gets.chomp!
       if VALID_USER_RESPONSES.include?(user_reply.to_sym)
-        return user_reply[0].downcase == 'y' ? 'active' : exit_game
+        return user_reply[0].downcase == 'y' ? run_game : exit_game
       else
         puts "Please enter y for yes or n for no ..."
       end
@@ -40,17 +40,16 @@ class Game
   end
 
   def play_again?
-    restore_board
     binding.pry
     play_new_game?
   end
 
   def run_game
-    @game_state = "new"
-    @game_state = play_new_game? # sets to 'active' or false
-    show_board # don't need as play_game? triggers exit_game  unless @game_state == false
+    @game_state = "active"
     current_player = @user
+    restore_board
 
+    # main game play loop
     while @game_state == 'active' do
       if current_player == @user
         user.move(@board, GAME_PROMPTS[:new_a_play])
@@ -60,10 +59,10 @@ class Game
 
       show_board
       @game_state = score_game
-      #binding.pry
+
       if @game_state != 'active'
         binding.pry
-        puts "this is the game_state that ended the game #{@game_state}"
+        puts "Game OVER!! >>>  #{@game_state}"
         play_again? 
       else
         current_player = toggel_player(current_player)
@@ -206,21 +205,18 @@ class Board
   end
 
   def judge_score
-    #binding.pry
     @win_sets.each do |winning_array|
-      #binding.pry if @squares[winning_array[0]] == "U"# A winning set contains all marks of a single player indicates a win (and loss)
       if @squares[winning_array[0]] == @squares[winning_array[1]] && @squares[winning_array[1]] == @squares[winning_array[2]]
-        binding.pry
         return @squares[winning_array[0]]
-
+      end
       # all winning sets contain marks of both players
-      elsif @win_sets.all?{|w_a| w_a.any?("U") && w_a.any?("C")} 
-        return "T"
-      else
+      if @win_sets.all?{|w_a| w_a.any?("U") && w_a.any?("C")} 
         binding.pry
-        return "A" # should never get here, but return A for 'active ' @game_state
+        return "T"
       end
     end
+    # return A for 'active' if no game resolution
+    return "A"
   end
 end
 
