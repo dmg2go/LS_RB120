@@ -18,8 +18,9 @@ class Game
     @board = Board.new
     @user = Player.new(:user, 'U')
     @opponent = Player.new(:opponent, 'C')
+    @current_score = WinSets.new
     @judge = Judge.new
-    binding.pry
+    # binding.pry
     self.play_new_game?
   end
 
@@ -54,12 +55,14 @@ class Game
     # main game play loop
     while @game_state == 'active' do
       if current_player == @user
-        user.move(@board, GAME_PROMPTS[:new_move])
+        user.move(@board, GAME_PROMPTS[:new_move], @current_score)
       elsif current_player == @opponent
         opponent.move(@board, '')
       end
 
       show_board
+      @current_score.report_score
+      binding.pry
       @game_state = score_game
 
       if @game_state != 'active'
@@ -110,18 +113,22 @@ class Player
     @marker = marker
   end
 
-  def move(game_board, move_prompt)
+  def move(game_board, move_prompt, current_score)
+    rival_mark = nil
     if self.type == :user
-      this_play = select_user_play(game_board, move_prompt)
+      this_play = user_play(game_board, move_prompt)
+      rival_mark = 'C'
     elsif self.type == :opponent
-      this_play = select_opponent_play(game_board, 'U')
+      rival_mark = 'U'
+      this_play = select_opponent_play(game_board, rival_mark)
     end
     game_board.mark_square_at(this_play, self.marker)
+    current_score.update_score(this_play, self.marker, rival_mark)
 
   end
 
   private
-  def select_user_play(game_board, move_prompt)
+  def user_play(game_board, move_prompt)
     @a_play = nil
     until @a_play do
       puts move_prompt
@@ -164,11 +171,9 @@ class Player
 end
 
 class Judge
-  attr_accessor :current_score
-
+  attr_reader :rule_book
   def initialize
-    @current_score = WinSets.new
-    binding.pry
+    # @rule_book = RuleBook.new
   end
 
 end
@@ -213,21 +218,6 @@ class Board
     p @squares[key.to_i]
     # binding.pry
   end
-
-  def judge_score
-    @winable_sets.each do |winning_array|
-      if @squares[winning_array[0]] == @squares[winning_array[1]] && @squares[winning_array[1]] == @squares[winning_array[2]]
-        return @squares[winning_array[0]]
-      end
-      # all winning sets contain marks of both players
-      if @winable_sets.all?{|w_a| w_a.any?("U") && w_a.any?("C")} 
-        binding.pry
-        return "T"
-      end
-    end
-    # return A for 'active' if no game resolution
-    return "A"
-  end
 end
 
 class Square
@@ -248,12 +238,54 @@ class WinSets
     win_set_names.each do |name|
 
       a_score_set = WinSet.new.scoring_set
-      a_score_set[:ordered_ids][:k0] = name[0].to_i
-      a_score_set[:ordered_ids][:k1] = name[1].to_i
-      a_score_set[:ordered_ids][:k2] = name[2].to_i
+      a_score_set[:ordered_ids].store(name[0].to_sym, name[0].to_i)
+      a_score_set[:ordered_ids].store(name[1].to_sym, name[1].to_i)
+      a_score_set[:ordered_ids].store(name[2].to_sym, name[2].to_i)
 
       @win_sets.store(name.to_sym, a_score_set)
-      
+    end
+  end
+
+  def report_score
+    puts "return the score"
+    binding.pry
+  end
+
+  def update_score(valid_play, player_mark, rival_mark)
+    update_sets(valid_play, player_mark)
+    binding.pry
+    ranked_threats = check_sets_for_threats(rival_mark)
+    binding.pry
+    ranked_wins = check_sets_for_wins(player_mark)
+    binding.pry
+  end
+
+  def update_sets(valid_play, player_mark)
+    @win_sets.each_pair do |name, ws|
+
+      ws[:ordered_ids].each_pair do |key, value| 
+        # binding.pry
+        if valid_play == key.to_s
+          value = player_mark
+          binding.pry
+        end
+      end
+    end
+  end
+
+
+  def check_sets_for_threats(rival_mark)
+    ranked_threat_sets = {}
+    @win_sets.each do |ws|
+      rival_mark_count = 0
+      ws[:ordered_ids].each_pair do |key, value| 
+        binding.pry
+        puts key
+        puts value
+      end
+
+        #rival_mark_count += 1 if value = rival_mark }
+      ranked_threat_sets.store(ws.name, rival_mark_count)
     end
   end
   # binding.pry
@@ -263,8 +295,7 @@ class WinSet
   attr_accessor :scoring_set
 
   def initialize
-    @scoring_set = {ordered_ids: {k0: nil, k1: nil, k2: nil}, state: WinSetState.new.current_state, my_mark_count: 0, rival_mark_count: 0}
-    # {ordered_ids: {k0: nil, k1: nil, k2: nil}, state: WinSetState.new, my_mark_count: 0, rival_mark_count: 0}
+    @scoring_set = {ordered_ids: {}, state: WinSetState.new.current_state, my_mark_count: 0, rival_mark_count: 0}
   end
 
   def scoring_set
