@@ -12,12 +12,14 @@ class Game
   VALID_USER_RESPONSES = [:Yes, :No, :Y, :N, :y, :n]
   PLAYER_TYPES = [:user, :opponent]
 
-  attr_reader :board, :user, :opponent, :game_state
+  attr_reader :board, :user, :opponent, :game_state, :judge
 
   def initialize
     @board = Board.new
     @user = Player.new(:user, 'U')
     @opponent = Player.new(:opponent, 'C')
+    @judge = Judge.new
+    binding.pry
     self.play_new_game?
   end
 
@@ -137,51 +139,8 @@ class Player
 
   def select_opponent_play(game_board, rival_mark)
     @a_play = nil
-    until @a_play do
-      game_board.winable_sets.each do |ws|
-        my_mark_count = 0
-        rival_mark_count = 0
-        #binding.pry
-        ws.each do |square_id|
-          if rival_mark == game_board.get_square_at(square_id)
-            binding.pry
-            rival_mark_count += 1
-          end
-          if self.marker == game_board.get_square_at(square_id)
-            binding.pry
-            my_mark_count += 1
-          end
-          # choose third unused square as play, to block or win
-          binding.pry if rival_mark_count == 2
-          if (rival_mark_count == 2 || my_mark_count == 2) && game_board.available_squares.include?(square_id)
-              #binding.pry
-              @a_play = square_id
-          end
-          binding.pry if rival_mark_count == 1
-          if rival_mark_count == 1 && game_board.available_squares.include?('5') && ws.include?(5)
-            @a_play = '5'
-            #binding.pry
-          end
-          binding.pry if rival_mark_count == 1
-          if rival_mark_count == 1 && @a_play == nil && game_board.available_squares.include?(square_id)
-            #binding.pry
-            @a_play = square_id
-          end
-          binding.pry if my_mark_count == 1
-          if my_mark_count == 1 && @a_play == nil && game_board.available_squares.include?(square_id)
-            binding.pry
-            @a_play = square_id
-          end
-          #binding.pry
-        end # end inner each square_id do
-        binding.pry
-      end # end outer each winable_set do
-      binding.pry
- 
-      if @a_play == nil
-        @a_play = game_board.available_squares.sample
-      end
 
+    until @a_play do
       binding.pry
       if valid_play?(@a_play, game_board.available_squares)
         puts "Computer selects #{@a_play} ..."
@@ -203,6 +162,17 @@ class Player
     available_squares.include?(a_play) ? true : false
   end
 end
+
+class Judge
+  attr_accessor :current_score
+
+  def initialize
+    @current_score = WinSets.new
+    binding.pry
+  end
+
+end
+
 
 class Board
   attr_reader :available_squares, :winable_sets, :squares
@@ -268,9 +238,72 @@ class Square
   def to_s
     @marker
   end
-
-
 end
+
+class WinSets
+  def initialize
+    @win_sets = {}
+    win_set_names = ["123", "456", "789", "147", "258", "369", "159", "753"].freeze
+    
+    win_set_names.each do |name|
+
+      a_score_set = WinSet.new.scoring_set
+      a_score_set[:ordered_ids][:k0] = name[0].to_i
+      a_score_set[:ordered_ids][:k1] = name[1].to_i
+      a_score_set[:ordered_ids][:k2] = name[2].to_i
+
+      @win_sets.store(name.to_sym, a_score_set)
+      
+    end
+  end
+  # binding.pry
+end
+
+class WinSet
+  attr_accessor :scoring_set
+
+  def initialize
+    @scoring_set = {ordered_ids: {k0: nil, k1: nil, k2: nil}, state: WinSetState.new.current_state, my_mark_count: 0, rival_mark_count: 0}
+    # {ordered_ids: {k0: nil, k1: nil, k2: nil}, state: WinSetState.new, my_mark_count: 0, rival_mark_count: 0}
+  end
+
+  def scoring_set
+    @scoring_set
+  end
+
+  def update_scoring_set
+    puts "update win set? coming soon!"
+  end
+end
+
+class WinSetState
+  attr_reader :state_of_set
+  attr_accessor :current_state
+  
+  def initialize
+    @state_of_set = ["empty", "in_play", "full", "won"]
+    @current_state = @state_of_set[0]
+    
+  end
+
+  def current_state
+    
+    @current_state
+  end
+
+  def change_state(new_state)
+    if @state_of_set.include?(new_state)
+      current_state = new_state
+    end
+    # if current_state == "empty"
+    #   current_state = "in_play"
+    # elsif current_state == "in_play"
+    #   current_state = "full"
+    # elsif current_state == "full"
+    #   current_state == "won"
+  end
+end
+
 
 g = Game.new
 
