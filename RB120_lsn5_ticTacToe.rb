@@ -136,14 +136,14 @@ class Player
 
       elsif can_win?(score)
         a_play = winning_move(score)
-        binding.pry
+        # binding.pry
 
       elsif can_lose?(score)
         a_play = blocking_move(score)
-        binding.pry
+        # binding.pry
 
       elsif can_add_to_row?(score)
-        binding.pry
+        # binding.pry
         a_play = building_move(score)
 
       else
@@ -168,9 +168,7 @@ class Player
   private
 
   def first_user_play?(board)
-    x = board.available_squares.count == 8
-    binding.pry # returns truthy if single user play has marked
-    x
+    board.available_squares.count == 8
   end
 
   def best_first_play(score)
@@ -231,6 +229,26 @@ class Player
 
   def blocking_move(score)
     threat_of_loss?(score)
+  end
+
+  #scoring_row_set.scored_rows.each_pair do |name, scored_row|
+  def can_add_to_row?(score) # will return true on first encountered row that fits condition
+    score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
+      # binding.pry
+      return scored_row.data[:u_count] == 0 && scored_row.data[:c_count] == 1
+    end
+  end 
+
+  def building_move(score)  # must review all scored_rows for best move
+    # gather best rows to build on
+    candidate_rows = {}
+    score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
+      if scored_row.data[:u_count] == 0 && scored_row.data[:c_count] == 1
+        candidate_rows.store(:name, scored_row) 
+      end
+    end
+    binding.pry
+    candidate_rows
   end
 
   def valid_play?(a_play, available_squares)
