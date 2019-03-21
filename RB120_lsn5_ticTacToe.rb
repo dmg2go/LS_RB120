@@ -39,33 +39,29 @@ class Game
   end
 
   def run_game
-    @game_state = "active"
+    @score.current_score = "active"
     reset_board
 
     # main game play loop
-    while @game_state == 'active' do
+    while @score.current_score == 'active' do
       # take a turn - toggle player as current_player each turn to get play
       if @current_player == user
         @current_play = user.get_user_play(@board, GAME_PROMPTS[:new_mark_board])
       elsif @current_player == opponent
-        @current_play = opponent.select_computed_play(@board, @score, "Computer is playing ...")
+        @current_play = opponent.select_computed_play(@board, @score, "Computer is choosing a move ...")
         binding.pry
       end
 
       board.mark_square_at(@current_play, @current_player.marker)
-
       score.eval_this_play(@current_play, @current_player)
-
       board.show
+      score.report
+      binding.pry
 
-      #binding.pry
-
-      if score.current_state == "game over"
+      if score.current_score == "game over"
         puts "Game OVER!! >>>  #{@score.final}"
         play_again? 
       end
-
-      puts score.current_state
       #binding.pry
       @current_player = toggel_player(@current_player)
     end
@@ -132,44 +128,36 @@ class Player
 
   def select_computed_play(game_board, score, msg_to_user)
     a_play = nil
-    binding.pry
-
-    #select_tactic dependant on state of competitive play
-    
-    if score.near_win_sets.any?
-        score.in_play_sets.keys do |name|
-          x = score.score_sets[name]
-          binding.pry
-        end
-    elsif score.in_play_sets.any?
-      
-      if game_board.available_squares.include?('5')
-        a_play = '5'
-      else
-        score.in_play_sets.keys do |name|
-          x = score.score_sets[name]
-          binding.pry
-
-          a_play = ['1', '3', '7', '9'].sample
-        end
-      end
-      binding.pry
-    end
-
     puts msg_to_user
-    a_play
 
-    until a_play do
-      binding.pry
+    while a_play == nil
+      if first_user_play?(game_board)
+        a_play = best_first_play(score)
+
+      elsif can_win?(score)
+        a_play = winning_move(score)
+        binding.pry
+
+      elsif can_lose?(score)
+        a_play = blocking_move(score)
+        binding.pry
+
+      elsif can_add_to_row?(score)
+        binding.pry
+        a_play = building_move(score)
+
+      else
+        a_play = game_board.available_squares.sample
+      end
+
       if valid_play?(a_play, game_board.available_squares)
-        puts "Computer selects #{@a_play} ..."
+        puts "Computer has chosen to play: #{a_play} ..."
         consume_play(a_play, game_board.available_squares)
       else
         a_play = nil
       end
-      binding.pry
-    end
-    binding.pry
+    end # end while loop
+    #binding.pry
     a_play
   end
 
@@ -178,6 +166,72 @@ class Player
   end
 
   private
+
+  def first_user_play?(board)
+    x = board.available_squares.count == 8
+    binding.pry # returns truthy if single user play has marked
+    x
+  end
+
+  def best_first_play(score)
+    user_marked = nil
+    score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
+      if scored_row.data[:u_count] == 1
+        scored_row.data[:row_marks].each_pair do |index, mark|
+          user_marked = index if mark == 'U'
+        end # end scored_row.data[:row_marks].each_pair do
+      end # end if scored_row.data[:u_count] == 1
+    end # score.scoring_row_set.scored_rows.each_pair do
+    binding.pry
+    if user_marked == '5'
+      ['1', '3', "7", "9"].sample # does not matter, cannot win without user mistake
+    else
+      '5' # center is the best move
+    end
+  end
+
+  def can_win?(score)
+    a_play = nil
+    score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
+      #binding.pry
+      if scored_row.data[:c_count] == 2 && scored_row.data[:u_count] == 0 # requires immediate block
+        scored_row.data[:row_marks].each_pair {|k, square| a_play = square if square != 'U'}
+      end
+      #binding.pry
+      break if a_play != nil
+    end # enod of score.scoring_row_set.each do
+   #binding.pry
+    a_play
+  end
+
+  def winning_move(score)
+    can_win?(score)
+  end
+
+  def can_lose?(score)
+    a_play = nil
+    #binding.pry
+    score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
+      # a row poses a threat of loss if opponent has two marks and self has none
+      if scored_row.data[:u_count] == 2 && scored_row.data[:c_count] == 0# requires immediate block
+        # binding.pry
+        scored_row.data[:row_marks].each_pair do |k, square|
+          if square != 'U'
+            a_play = square
+            # binding.pry
+          end
+        end
+      end
+      #binding.pry
+      break if a_play != nil
+    end # enod of score.scoring_row_set.each do
+    #binding.pry
+    a_play
+  end
+
+  def blocking_move(score)
+    threat_of_loss?(score)
+  end
 
   def valid_play?(a_play, available_squares)
     available_squares.include?(a_play) ? true : false
@@ -247,28 +301,28 @@ end
 
 class Score # an instance of Score changes state with each play, throughout life of game
   attr_reader :current_score, :won_set, :draw_sets, :in_play_sets, :near_win_sets, :near_loss_sets
-  attr_accessor :scoring_row_set
+  attr_accessor :scoring_row_set, :current_score, :final
 
   def initialize
     @scoring_row_set = ScorableRows.new
-    # binding.pry
-    @won_set, @draw_sets, @in_play_sets, @near_loss_sets, @near_win_sets = {}, {}, {}, {}, {}
+    @current_score = "active"
+    @final = nil
   end
 
   # called LN: 68 @score.update_score(@current_play, current_player)
   def eval_this_play(this_play, player)
-    player_mark = player.marker
-    rival_mark = player.rival_mark
+    update_row_stats(this_play, player) #, scoring_row_set)
+    score_row_stats(player)
+    # binding.pry
+  end
 
-    update_score_rows(this_play, player) #, scoring_row_set)
-    analyze_score_sets(player_mark, rival_mark)
-    report(player_mark, rival_mark)
-    #binding.pry
+  def report
+    puts " this is the current score from line 359: #{@current_score}"
   end
 
   #private
   protected
-  def update_score_rows(this_play, player) #, scoring_row_set)
+  def update_row_stats(this_play, player) #, scoring_row_set)
     scoring_row_set.scored_rows.each_pair do |name, scored_row|
       #binding.pry
       scored_row.data[:row_marks].each_pair do |key, value|
@@ -278,64 +332,50 @@ class Score # an instance of Score changes state with each play, throughout life
           
           player.marker == 'U' ? scored_row.data[:u_count] += 1 : scored_row.data[:c_count] += 1
           scored_row.data[:row_state] = "in_play"
-           binding.pry
+           #binding.pry
         end
       end # close inner loop keyed on this_scored_row[key]
     end # close outer loop keyed on name
   end
 
-  def analyze_score_sets(player_mark, rival_mark)
+  def score_row_stats(player)
+    player_mark = player.marker
+    rival_mark = player.rival_mark
+    draw_rows_count = 0
+    scoring_row_set.scored_rows.each_pair do |name, scored_row|
+      #binding.pry
+      player_mark_count = (player_mark == 'U' ? scored_row.data[:u_count] : scored_row.data[:c_count])
+      rival_mark_count = (rival_mark == 'U' ? scored_row.data[:u_count] : scored_row.data[:c_count])
 
-    @score_sets.each_pair do |name, this_score_row|
-      # @won_set = nil, @draw_sets = [], @in_play_sets = [], @near_loss_sets = [], @near_win_sets = [], @empty_sets = []
-      player_mark_count = this_score_row[:ordered_ids].values.count(player_mark)
-      rival_mark_count = this_score_row[:ordered_ids].values.count(rival_mark)
-      
-      if player_mark_count == 3
-        @won_set.store(name, player_mark)
-      elsif rival_mark_count == 3
-        @won_set.store(name, rival_mark)
-      elsif player_mark_count == 2
-        @near_win_sets.store(name, player_mark)
-        @near_loss_sets.store(name, rival_mark)
-      elsif rival_mark_count == 2
-        @near_win_sets.store(name, rival_mark)
-        @near_loss_sets.store(name, player_mark)
-        binding.pry
-      elsif player_mark_count == 1
-        @in_play_sets.store(name, player_mark)
-        binding.pry
-      elsif rival_mark_count == 1
-        @in_play_sets.store(name, rival_mark)
-      elsif player_mark_count + rival_mark_count == 3
-        @draw_sets.store(name, 'T')
-      end
-      # this_score_row[:ordered_ids].each_pair do |key, value|
-      #   puts key
-      #   puts value
-      #   binding.pry
-      # end # end inner do loop
-    end
-    # binding.pry
-  end
-
-  def report(player_mark, rival_mark)
-
-    unless @won_set.empty?
-      if @won_set[:name] == player_mark
-        self.current_state = "game over"
-        self.final = " Player won!"
+      case player_mark_count
+      when 3
+        scored_row.data[:row_state] = "end"
+        scored_row.data[:status_msg] = "Game Won by #{player.type}"
+        @final = scored_row.data[:status_msg]
+        @current_score = 'game over'
+      when 2
+        scored_row.data[:row_state] = "near_end"
+        scored_row.data[:status_msg] = "Game nearly won by #{player.type}"
+        @current_score = 'active'
+      when 1
+        scored_row.data[:row_state] = "in play"
+        scored_row.data[:status_msg] = "Game play made by #{player.type}"
+        @current_score = 'active'
       else
-        @current_state = "game over"
-        self.final = "Rival won!"
+        scored_row.data[:row_state] = 'empty'
+        @current_score = 'active'
       end
-    end
 
-    if @draw_sets.values.count == 8
-      self.final = "Game ends in a tie!"
-      @current_state = "game over"
-    else
-      @current_state = "active"
+      if player_mark_count + rival_mark_count == 3
+        scored_row.data[:row_state] = 'draw'
+        scored_row.data[:status_msg] = "Game tied in this row."
+        draw_rows_count += 1
+      end
+    end # end # end do loop
+    if draw_rows_count == 8
+      @current_score = 'game over'
+      @final = "Game ends in a draw ..."
+       binding.pry
     end
   end
 
@@ -378,11 +418,9 @@ end
 class ScoreRow
   attr_accessor :data
   def initialize
-    @data  = {row_marks: nil, row_state: nil, u_count: 0, c_count: 0}
+    @data  = {row_marks: nil, row_state: nil, status_msg: nil, u_count: 0, c_count: 0}
   end
 end
-
-
 
 class WinSetState
   attr_reader :state_of_set
