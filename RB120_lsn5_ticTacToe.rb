@@ -1,6 +1,6 @@
 # => RB120 Object Oriented Programming
 # => Lesson 5 Slightly Larger OO Programs
-# => March 2-10, 2019
+# => March 2-22, 2019
 # => David George 
 # => dmg2go@gmail.com
 # => RB120_lsn5_ticTacToe.rb
@@ -8,7 +8,8 @@
 require 'pry'
 
 class Game
-  GAME_PROMPTS = {new_game: "Want to a_play Tic Tac Toe?", new_mark_board: "Select a cell to mark ... (by number)"}
+  GAME_PROMPTS = {new_game:       "Want to play Tic Tac Toe?", 
+                  new_mark_board: "Select a square to play ... (by number)"}
   VALID_USER_RESPONSES = [:Yes, :No, :Y, :N, :y, :n]
   PLAYER_TYPES = [:user, :opponent]
 
@@ -39,30 +40,25 @@ class Game
   end
 
   def run_game
-    @score.current_score = "active"
-    reset_board
-
+    score.current_score = "active"
+    reset_game
     # main game play loop
-    while @score.current_score == 'active' do
+    while score.current_score == 'active' do
       # take a turn - toggle player as current_player each turn to get play
       if @current_player == user
         @current_play = user.get_user_play(@board, GAME_PROMPTS[:new_mark_board])
       elsif @current_player == opponent
-        @current_play = opponent.select_computed_play(@board, @score, "Computer is choosing a move ...")
-        binding.pry
+        @current_play = opponent.computes_move(@board, @score, "Computer is choosing a move ...")
       end
 
       board.mark_square_at(@current_play, @current_player.marker)
       score.eval_this_play(@current_play, @current_player)
       board.show
-      score.report
-      binding.pry
-
       if score.current_score == "game over"
-        puts "Game OVER!! >>>  #{@score.final}"
+        score.report
         play_again? 
       end
-      #binding.pry
+
       @current_player = toggel_player(@current_player)
     end
   end
@@ -71,27 +67,14 @@ class Game
     @current_player == @user ? @opponent : @user
   end
 
-  def reset_board
-    board.restore_board 
+  def reset_game
+    board.restore_board
+    score.reset
     board.show
+    @current_player = @user
   end
 
-  # def score_game
-  #   case @board.judge_score
-  #   when 'U'
-  #     then @game_state = "User won!"
-  #   when 'C'
-  #     then @game_state = "Computer won!"
-  #   when 'T'
-  #     then @game_state = 'Declare tie ...'
-  #   when 'A'
-  #     then @game_state = 'active'
-  #   end
-  #   @game_state
-  # end
-
   def play_again?
-    binding.pry
     play_new_game?
   end
 
@@ -126,7 +109,7 @@ class Player
     a_play
   end
 
-  def select_computed_play(game_board, score, msg_to_user)
+  def computes_move(game_board, score, msg_to_user)
     a_play = nil
     puts msg_to_user
 
@@ -136,22 +119,22 @@ class Player
 
       elsif can_win?(score)
         a_play = winning_move(score)
-        # binding.pry
+         #binding.pry
 
       elsif can_lose?(score)
         a_play = blocking_move(score)
-        # binding.pry
+         #binding.pry
 
       elsif can_add_to_row?(score)
-        # binding.pry
-        a_play = building_move(score)
-
+        a_play = building_move(score, game_board)
+        #binding.pry
       else
+        binding.pry
         a_play = game_board.available_squares.sample
       end
 
       if valid_play?(a_play, game_board.available_squares)
-        puts "Computer has chosen to play: #{a_play} ..."
+        puts "Computer has chosen a move: #{a_play} ..."
         consume_play(a_play, game_board.available_squares)
       else
         a_play = nil
@@ -176,13 +159,13 @@ class Player
     score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
       if scored_row.data[:u_count] == 1
         scored_row.data[:row_marks].each_pair do |index, mark|
-          user_marked = index if mark == 'U'
+          user_marked = index.to_s if mark == 'U'
         end # end scored_row.data[:row_marks].each_pair do
       end # end if scored_row.data[:u_count] == 1
     end # score.scoring_row_set.scored_rows.each_pair do
-    binding.pry
+
     if user_marked == '5'
-      ['1', '3', "7", "9"].sample # does not matter, cannot win without user mistake
+      ['1', '3', '7', "9"].sample # does not matter, cannot win without user mistake
     else
       '5' # center is the best move
     end
@@ -191,9 +174,12 @@ class Player
   def can_win?(score)
     a_play = nil
     score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
-      #binding.pry
       if scored_row.data[:c_count] == 2 && scored_row.data[:u_count] == 0 # requires immediate block
-        scored_row.data[:row_marks].each_pair {|k, square| a_play = square if square != 'U'}
+        scored_row.data[:row_marks].each_pair do |key, square|
+        if square != 'C' # square.to_i.class == Integer 
+          a_play = square
+         end
+       end
       end
       #binding.pry
       break if a_play != nil
@@ -228,27 +214,78 @@ class Player
   end
 
   def blocking_move(score)
-    threat_of_loss?(score)
+    can_lose?(score)
   end
 
   #scoring_row_set.scored_rows.each_pair do |name, scored_row|
   def can_add_to_row?(score) # will return true on first encountered row that fits condition
+    row_to_build = false
     score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
-      # binding.pry
-      return scored_row.data[:u_count] == 0 && scored_row.data[:c_count] == 1
-    end
-  end 
-
-  def building_move(score)  # must review all scored_rows for best move
-    # gather best rows to build on
-    candidate_rows = {}
-    score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
+      #binding.pry
       if scored_row.data[:u_count] == 0 && scored_row.data[:c_count] == 1
-        candidate_rows.store(:name, scored_row) 
+        row_to_build = true
       end
     end
-    binding.pry
-    candidate_rows
+    #binding.pry
+    row_to_build
+  end 
+
+  def building_move(score, board)  # must review all scored_rows for best move
+    # gather best rows to build on
+    a_play = nil
+
+    rows_to_block = {}
+    rows_with_user_mark = {}
+    coincident_user_marked_squares = []
+
+    candidate_rows = {}
+    rows_with_opponent_mark = {}
+    opponent_marked_squares = ['C']
+    candidate_squares = []
+
+    score.scoring_row_set.scored_rows.each_pair do |name, scored_row|
+      if scored_row.data[:u_count] == 0 && scored_row.data[:c_count] == 1
+        candidate_rows.store(name, scored_row)
+      end
+
+      if scored_row.data[:u_count] == 1 && scored_row.data[:c_count] == 0
+        rows_to_block.store(name, scored_row)
+      end
+    end
+
+    rows_to_block.each_pair do |name, scored_row|
+      rows_with_user_mark.store(name, scored_row.data[:row_marks].values)
+    end
+
+    row_names = rows_with_user_mark.keys
+
+    first_row_name = row_names[0]
+    first_marked_row = rows_with_user_mark.delete(first_row_name)
+
+    rows_with_user_mark.each_pair do |name, marks_array|
+      coincident_user_marked_squares = first_marked_row & marks_array
+    end
+
+    coincident_user_marked_squares.delete('U')
+
+    candidate_rows.each_pair do |name, scored_row|
+      rows_with_opponent_mark.store(name, scored_row.data[:row_marks].values)
+    end
+
+    rows_with_opponent_mark.each_pair do |name, marks_array|
+      opponent_marked_squares = opponent_marked_squares.union(marks_array)
+    end
+
+    opponent_marked_squares.delete('C')
+    candidate_squares = opponent_marked_squares & coincident_user_marked_squares
+
+    if candidate_squares.length > 0
+      # binding.pry
+      a_play = candidate_squares.sample
+    else
+      # binding.pry
+      a_play = opponent_marked_squares.sample
+    end
   end
 
   def valid_play?(a_play, available_squares)
@@ -257,13 +294,6 @@ class Player
 
   def consume_play(a_play, available_squares)
     available_squares.delete(a_play)
-  end
-end
-
-class Judge
-  attr_reader :rule_book
-  def initialize
-    # @rule_book = RuleBook.new
   end
 end
 
@@ -303,7 +333,6 @@ class Board
 
   def mark_square_at(key, marker)
     @squares[key.to_i] = marker
-    p @squares[key.to_i]
   end
 end
 
@@ -318,7 +347,7 @@ class Square
 end
 
 class Score # an instance of Score changes state with each play, throughout life of game
-  attr_reader :current_score, :won_set, :draw_sets, :in_play_sets, :near_win_sets, :near_loss_sets
+  #attr_reader :current_score, :won_set, :draw_sets, :in_play_sets, :near_win_sets, :near_loss_sets
   attr_accessor :scoring_row_set, :current_score, :final
 
   def initialize
@@ -327,15 +356,17 @@ class Score # an instance of Score changes state with each play, throughout life
     @final = nil
   end
 
+  def reset
+    initialize
+  end
   # called LN: 68 @score.update_score(@current_play, current_player)
   def eval_this_play(this_play, player)
     update_row_stats(this_play, player) #, scoring_row_set)
     score_row_stats(player)
-    # binding.pry
   end
 
   def report
-    puts " this is the current score from line 359: #{@current_score}"
+    puts "     #*#<>  The final score: #{@final}  <>#*#"
   end
 
   #private
@@ -350,16 +381,17 @@ class Score # an instance of Score changes state with each play, throughout life
           
           player.marker == 'U' ? scored_row.data[:u_count] += 1 : scored_row.data[:c_count] += 1
           scored_row.data[:row_state] = "in_play"
-           #binding.pry
         end
       end # close inner loop keyed on this_scored_row[key]
     end # close outer loop keyed on name
+    #binding.pry
   end
 
   def score_row_stats(player)
     player_mark = player.marker
     rival_mark = player.rival_mark
     draw_rows_count = 0
+
     scoring_row_set.scored_rows.each_pair do |name, scored_row|
       #binding.pry
       player_mark_count = (player_mark == 'U' ? scored_row.data[:u_count] : scored_row.data[:c_count])
@@ -373,32 +405,27 @@ class Score # an instance of Score changes state with each play, throughout life
         @current_score = 'game over'
       when 2
         scored_row.data[:row_state] = "near_end"
-        scored_row.data[:status_msg] = "Game nearly won by #{player.type}"
         @current_score = 'active'
       when 1
         scored_row.data[:row_state] = "in play"
         scored_row.data[:status_msg] = "Game play made by #{player.type}"
         @current_score = 'active'
-      else
-        scored_row.data[:row_state] = 'empty'
-        @current_score = 'active'
       end
+      
+      break if @current_score == "game over"
 
-      if player_mark_count + rival_mark_count == 3
+      if (@current_score == 'active') && (player_mark_count + rival_mark_count == 3)
+
         scored_row.data[:row_state] = 'draw'
         scored_row.data[:status_msg] = "Game tied in this row."
         draw_rows_count += 1
       end
-    end # end # end do loop
+    end # end scoring_row_set.scored_rows.each_pair do
+
     if draw_rows_count == 8
       @current_score = 'game over'
       @final = "Game ends in a draw ..."
-       binding.pry
     end
-  end
-
-  def to_s
-    current_state
   end
 end
 
@@ -439,35 +466,6 @@ class ScoreRow
     @data  = {row_marks: nil, row_state: nil, status_msg: nil, u_count: 0, c_count: 0}
   end
 end
-
-class WinSetState
-  attr_reader :state_of_set
-  attr_accessor :current_state
-  
-  def initialize
-    @state_of_set = ["empty", "in_play", "full", "won"]
-    @current_state = @state_of_set[0]
-    
-  end
-
-  def current_state
-    
-    @current_state
-  end
-
-  def change_state(new_state)
-    if @state_of_set.include?(new_state)
-      current_state = new_state
-    end
-    # if current_state == "empty"
-    #   current_state = "in_play"
-    # elsif current_state == "in_play"
-    #   current_state = "full"
-    # elsif current_state == "full"
-    #   current_state == "won"
-  end
-end
-
 
 g = Game.new
 
